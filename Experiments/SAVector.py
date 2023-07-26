@@ -84,7 +84,7 @@ class scaled_out_simulator:
         self.total_filter_dram_reads = []
         self.total_ofmap_dram_writes = []
 
-        ########################### SRAM 관련
+        ########################### SRAM
         self.stats_ifmap_sram_reads = np.ones(1) * -1
         self.stats_filter_sram_reads = np.ones(1) * -1
         self.stats_ofmap_sram_writes = np.ones(1) * -1
@@ -97,8 +97,9 @@ class scaled_out_simulator:
         ########## For new tiling strategy ##########
         self.ifmap_tiles_each_pod_acc = []
         self.filter_tiles_each_pod_acc = []
-        ########## For new utilization (mapping eff) ########
+        ########## For new utilization (mapping eff & pod eff) ########
         self.OVER_util = []
+        self.POD_util = []
         #############################################
 
         # Flags
@@ -116,19 +117,19 @@ class scaled_out_simulator:
                     ):
 
         # Blank 1. Read the input files 
-        self.topo_obj = topologies() #topo_obj는 topologies의 객체
-        self.topo_obj.load_arrays(topology_filename, mnk_inputs=mnk_input) #topology 레이어 불러옴
-        num_layers=self.topo_obj.get_num_layers() #레이어 수 불러옴
+        self.topo_obj = topologies() 
+        self.topo_obj.load_arrays(topology_filename, mnk_inputs=mnk_input)
+        num_layers=self.topo_obj.get_num_layers() 
 
-        self.single_arr_cfg = scale_config() #single_arr_cfg는 config객체
-        self.single_arr_cfg.read_conf_file(single_arr_config_file) #cfg읽어오고
+        self.single_arr_cfg = scale_config()
+        self.single_arr_cfg.read_conf_file(single_arr_config_file) 
         # <insert code here>
 
         self.grid_rows = grid_rows
-        self.grid_cols = grid_cols #grid 행, 열 수 가져옴
+        self.grid_cols = grid_cols 
 
-        num_arrays = grid_rows * grid_cols #systolic array 수는 grid들의 곱
-        self.stats_compute_cycles = np.ones((num_layers, num_arrays)) * -1 #compute_cycles는 레이어 수*array수 행렬.(trace)
+        num_arrays = grid_rows * grid_cols
+        self.stats_compute_cycles = np.ones((num_layers, num_arrays)) * -1 
         #
 
         self.stats_ifmap_dram_reads = np.ones((num_layers, num_arrays)) * -1
@@ -141,13 +142,13 @@ class scaled_out_simulator:
 
         self.stats_ofmap_dram_writes = np.ones((num_layers, num_arrays)) * -1
         self.stats_ofmap_dram_start_cycl = np.ones((num_layers, num_arrays)) * -1
-        self.stats_ofmap_dram_end_cycl = np.ones((num_layers, num_arrays)) * -1 #여기까지도 마찬가지로, num_layer*num_array행렬 만들고 -1로 초기화
+        self.stats_ofmap_dram_end_cycl = np.ones((num_layers, num_arrays)) * -1
 
         self.total_ifmap_dram_reads = []
         self.total_filter_dram_reads = []
         self.total_ofmap_dram_writes = []
 
-        ########################### SRAM 관련
+        ########################### SRAM 
         self.stats_ifmap_sram_reads = np.ones((num_layers, num_arrays)) * -1
         self.stats_filter_sram_reads = np.ones((num_layers, num_arrays)) * -1
         self.stats_ofmap_sram_writes = np.ones((num_layers, num_arrays)) * -1
@@ -163,27 +164,27 @@ class scaled_out_simulator:
         self.overall_compute_cycles_all_layers = 0
         self.overall_util_perc_all_layer = 0
 
-        self.dataflow = dataflow #전달받은 파라미터로 dataflow 선택
+        self.dataflow = dataflow 
         self.params_valid = True
 
     #
     def run_simulation_single_layer(self, layer_id=0):
 
         # Blank 2. Create the operand matrices
-        opmat_obj = opmat() #scalesim.compute.operand_matrix.py의 operand_matrix 객체
-        opmat_obj.set_params(config_obj=self.single_arr_cfg, topoutil_obj=self.topo_obj, layer_id=layer_id) #cfg, topo, layerid 설정함
+        opmat_obj = opmat() 
+        opmat_obj.set_params(config_obj=self.single_arr_cfg, topoutil_obj=self.topo_obj, layer_id=layer_id) 
 
         _, ifmap_op_mat = opmat_obj.get_ifmap_matrix()
         _, filter_op_mat = opmat_obj.get_filter_matrix()
-        _, ofmap_op_mat = opmat_obj.get_ofmap_matrix() #설정된 opmat_obj객체에서 ifmap, filter, ofmap matrix 가져옴
+        _, ofmap_op_mat = opmat_obj.get_ofmap_matrix() 
         # <Insert code here>
 
         ### For GET UTILIZATION ###########################################
         SA_row, SA_col = self.single_arr_cfg.get_array_dims()
         SR=ifmap_op_mat.shape[0]
         SC=filter_op_mat.shape[1]
-        util_this_layer = Get_Util(SA_row, SA_col, SR, SC)
-        self.OVER_util.append(util_this_layer)
+        # util_this_layer = Get_Util(SA_row, SA_col, SR, SC)
+        # self.OVER_util.append(util_this_layer)
         ###################################################################
 
 
@@ -240,21 +241,29 @@ class scaled_out_simulator:
         for l in range(len(Tiles_each_pod)):
             self.filter_tiles_each_pod_acc[l] = np.sum(Tiles_each_pod[0:(l+1)])
         
+        ### pod utilization #########################
+        #print("POD UTIL DEBUG: {} {} {} {}".format(Used_row, Used_col, self.grid_rows, self.grid_cols))
+        pod_util_this_layer = (Used_row * Used_col) / (self.grid_rows * self.grid_cols)
+        assert pod_util_this_layer <= 1.0, "pod is bigger than 1.0"
+        self.POD_util.append(pod_util_this_layer)
+
         #DEBUG
         # print('DEBUG: {} {}'.format(self.ifmap_tiles_each_pod_acc, self.filter_tiles_each_pod_acc))
         # print('DEBUG: {} {}'.format(Used_row, Used_col))
         # print(3/0)
         ###########################################################
 
+        PE_util_this_layer=[]
+
         for grid_row_id in range(self.grid_rows):
-            for grid_col_id in range(self.grid_cols): #grid(파티션)마다 for문을 실행
+            for grid_col_id in range(self.grid_cols):
 
 #################################################################
                 if (grid_row_id >= Used_row) | (grid_col_id >= Used_col):
                     continue
 #################################################################
                 
-                arr_id = grid_row_id * self.grid_cols + grid_col_id #arr_id는 이번에 실행할 파티션 번호. ex)2x2면 (01)(23)번
+                arr_id = grid_row_id * self.grid_cols + grid_col_id 
                 print('Running subarray ' + str(arr_id))
 
                 ifmap_op_mat_part, filter_op_mat_part, ofmap_op_mat_part =\
@@ -267,19 +276,25 @@ class scaled_out_simulator:
                         continue
 ###############################################################
 
-                #print('ifmap: {}'.format(ifmap_op_mat_part.shape))
-                #print('filter: {}'.format(filter_op_mat_part.shape))
+                # print('ifmap: {}'.format(ifmap_op_mat_part.shape))
+                # print('filter: {}'.format(filter_op_mat_part.shape))
+
+                ### PE util #########################
+                Util_this_pod = Get_Util(SA_row, SA_col, ifmap_op_mat_part.shape[0], filter_op_mat_part.shape[1])
+                assert Util_this_pod <= 1.0, "PE util in this pod is bigger than 1.0"
+                PE_util_this_layer.append(Util_this_pod)
+                #######################################################
 
                 # Blank 3. Instantiate the mapping utilities
                 compute_system = systolic_compute_os()
                 if self.dataflow == 'ws':
                     compute_system = systolic_compute_ws()
                 elif self.dataflow == 'is':
-                    compute_system = systolic_compute_is() #dataflow에 맞는 compute 객체를 compute_system으로 생성
+                    compute_system = systolic_compute_is() 
                 compute_system.set_params(config_obj=self.single_arr_cfg,
                                         ifmap_op_mat=ifmap_op_mat_part,
                                         filter_op_mat=filter_op_mat_part,
-                                        ofmap_op_mat=ofmap_op_mat_part) #compute객체에 이번 파티션의 파라미터 전달
+                                        ofmap_op_mat=ofmap_op_mat_part) 
 
 
                 #############################################
@@ -300,7 +315,7 @@ class scaled_out_simulator:
                 # Blank 4. Memory system
                 memory_system = mem_dbsp()
 
-                # 원래 cfg파일의 SRAM size는 kB단위지만 여기서는 테스트를 위해 임의로 byte단위로 변경해서 쓰고있음.
+                # Byte (not KB)
                 ifmap_buf_size_kb, filter_buf_size_kb, ofmap_buf_size_kb = self.single_arr_cfg.get_mem_sizes()
                 ifmap_buf_size_bytes = ifmap_buf_size_kb
                 filter_buf_size_bytes = filter_buf_size_kb
@@ -334,7 +349,7 @@ class scaled_out_simulator:
                         filter_backing_bw = arr_row
                         ofmap_backing_bw = arr_col
 
-                # 여기부터는 CALC모드.
+                
                 else:
                     dataflow = self.single_arr_cfg.get_dataflow()
                     arr_row, arr_col = self.single_arr_cfg.get_array_dims()
@@ -374,7 +389,7 @@ class scaled_out_simulator:
                     filter_backing_buf_bw=filter_backing_bw,
                     ofmap_backing_buf_bw=ofmap_backing_bw,
                     verbose=True,
-                    estimate_bandwidth_mode=estimate_bandwidth_mode#tutorial3 코드에선 여기가 True
+                    estimate_bandwidth_mode=estimate_bandwidth_mode#
                 )
 
                 
@@ -394,8 +409,8 @@ class scaled_out_simulator:
                 #print('filter DRAM read in this grid: {}'.format(fildram[2]))
                 self.ofdram = memory_system.get_ofmap_dram_details()
 
-                ### WS에서 ofdram은 수정이 필요 ######################################
-                # fold 수만큼 ofdram이 증폭되기 때문에 이를 나누어 줄 필요 있음 #
+                ### DEBUG ofdram in WS dataflow ######################################
+                
                 if self.dataflow=='ws':
                     IF_folds=np.ceil(ifmap_op_mat_part.shape[1]/SA_row)
                     #Fil_folds=np.ceil(filter_op_mat_part.shape[1]/SA_col)
@@ -411,6 +426,15 @@ class scaled_out_simulator:
                                   compute_system_obj=compute_system,
                                   layer_id=layer_id)
 
+        assert len(PE_util_this_layer)==(Used_row * Used_col), "util is not computed correctly."
+        PE_util_this_layer = np.average(PE_util_this_layer) 
+        assert PE_util_this_layer <= 1.0, "PE util is bigger than 1.0"
+        Entire_util_this_layer = pod_util_this_layer * PE_util_this_layer 
+        print("UTIL DEBUG: {} {} {}".format(pod_util_this_layer, PE_util_this_layer, Entire_util_this_layer))
+        assert Entire_util_this_layer <= 1.0, "util is bigger than 1.0"
+
+        self.OVER_util.append(Entire_util_this_layer)
+
         self.all_grids_done = True
 
     #
@@ -419,12 +443,11 @@ class scaled_out_simulator:
 
         for lid in range(self.topo_obj.get_num_layers()):
             print('Running layer=' + str(lid))
-            self.run_simulation_single_layer(lid) #모든 레이어에 대해 sim_single_layer
+            self.run_simulation_single_layer(lid) 
 
     #
     def get_opmat_parts(self, ifmap_op_mat, filter_op_mat, ofmap_op_mat,
-                        grid_row_id, grid_col_id): #파티션별로 잘린 opmat부분을 가져오는 메소드
-
+                        grid_row_id, grid_col_id): 
         ifmap_op_mat_part = np.zeros((1,1))
         filter_op_mat_part = np.zeros((1,1))
         ofmap_op_mat_part = np.zeros((1,1))
@@ -458,10 +481,7 @@ class scaled_out_simulator:
             ofmap_op_mat_part = ofmap_op_mat[ofmap_row_start_id: ofmap_row_end_id,
                                              ofmap_col_start_id: ofmap_col_end_id]
 
-        # WS: 잘못 만들어져 있었음. weight opmat은 ifmap에 비해 처음부터 90도 돌아간 형태로 만들어져 있음.
-        # 따라서 grid_row가 늘어남에 따라 세로 방향으로 opmat_part를 read해야 함.
-        # 간단히 말해서 row와 column을 반대로 생각해야 함.
-        # 이에 맞춰서 ofmap 역시 grid_row로 자르도록 변경.
+        # WS: Debug tiling error ///DONE
         elif self.dataflow == 'ws':
             print('ifmap_row and col: {} {}, filter row and col: {} {}'.format(ifmap_op_mat.shape[0], ifmap_op_mat.shape[1], filter_op_mat.shape[0], filter_op_mat.shape[1]))
             if grid_row_id == 0:
@@ -492,7 +512,7 @@ class scaled_out_simulator:
             ofmap_op_mat_part = ofmap_op_mat[ofmap_row_start_id: ofmap_row_end_id,
                                              ofmap_col_start_id: ofmap_col_end_id]
 
-        # IS: WS와 유사하게 틀림. 따라서 같은 방식으로, (논리적으로) filter를 90도 돌아간 채 자르도록 변경함.
+        # IS
         elif self.dataflow == 'is':
             ifmap_rows_per_part = math.ceil(ifmap_op_mat.shape[0] / self.grid_rows)
             ifmap_row_start_id = grid_row_id * ifmap_rows_per_part
@@ -533,7 +553,7 @@ class scaled_out_simulator:
         if self.dataflow=='ws':
             ofmap_dram_writes = self.ofdram # ofmap dram writes를 single_layer_sim method에서 새로 계산한 값으로 수정.
 
-        ############## SRAM 읽기 쓰기 추가
+        ############## SRAM
         ifmap_sram_reads = compute_system_obj.get_ifmap_requests()
         filter_sram_reads = compute_system_obj.get_filter_requests()
         ofmap_sram_writes = compute_system_obj.get_ofmap_requests()
@@ -596,15 +616,14 @@ class scaled_out_simulator:
         return self.overall_compute_cycles_all_layers, self.overall_util_perc_all_layer, \
                self.total_ifmap_dram_reads, self.total_filter_dram_reads, self.total_ofmap_dram_writes, \
                self.total_ifmap_sram_reads, self.total_filter_sram_reads, self.total_ofmap_sram_writes,self.overall_compute_cycles_per_layers, \
-               self.OVER_util
-               #원래는 self.total_ifmap_dram_reads[0], self.total_filter_dram_reads[0], self.total_ofmap_dram_writes[0]로서
-               #왜인지 첫 layer DRAM access만 전달하고 있었음. 그냥 전체 레이어에 대한 access 수를 vector로 리턴하게 바꿈.
-               #overall_compute_cycles_per_layers 이것도 리턴하게 바꿈.
-               #SRAM access도 리턴하게 바꿈.
-               #OVER utilization도.
+               self.OVER_util, self.POD_util
+               
+    
+    def get_report_items_per_pod(self):
+        return self.stats_ifmap_dram_reads, self.stats_filter_dram_reads, self.stats_ofmap_dram_writes, self.topo_obj.get_num_layers()
 
 def Get_Util(SA_row, SA_col, SR, SC):
-    #Fold 수 계산
+    #Fold
     FR=int(np.ceil(SR/SA_row))
     FC=int(np.ceil(SC/SA_col))
     
@@ -633,7 +652,7 @@ def Get_Util(SA_row, SA_col, SR, SC):
 def Get_weighted_util(cycles_per_layer, util_per_layer):
     Wutil=[]
     for i in range(len(cycles_per_layer)):
-        CxU = (cycles_per_layer[i]/np.sum(cycles_per_layer)) * util_per_layer[i] * 100 # i번째 layer가 전체 runtime에서 차지하는 비율 * i번째 layer util.
+        CxU = (cycles_per_layer[i]/np.sum(cycles_per_layer)) * util_per_layer[i] * 100 # 
         Wutil.append(CxU)
     Wutil = np.round(np.sum(Wutil),2)
 
@@ -667,6 +686,10 @@ def Get_OFMAP_offchip_writes(toponame):
         filparam.append(filparam_this_layer)
         ofparam.append(ofparam_this_layer)
 
+    # print(sum(ifparam))
+    # print(sum(filparam))
+    # print(sum(ofparam))
+
     return ofparam
 
 #
@@ -681,43 +704,41 @@ if __name__ == '__main__':
     parser.add_argument('SAdim', help='Set SA dimension')
     args = parser.parse_args()
     ##################################
-    # 실행을 위해서 유저가 설정하는 부분 #
+    # SIM CONFIGURE #
     ##################################
-    simname= 'EVAL1' #실험명
-    toponame= args.topo #topology 이름 (e.g.,alexnet)
+    simname= 'EVAL1' 
+    toponame= args.topo 
     SAdim=args.SAdim
     SArow, SAcol = map(str, SAdim.split('x'))
-    plotname_runtime = 'RT.png' #runtime관련 plot 이름 설정
-    plotname_DRAM = 'DRAM.png' #DRAM관련 plot 이름 설정
-    mnk_flag = False #False면 conv, True면 mnk
-
-    #'16x16':'MACs_sq_256','32x32':'MACs_sq_1024',} #실험할 설정 목록
-    # ('nxm':'config이름') 형태로 입력. n과 m은 각각 grid 행과 열임.)
-    # Scale-up을 실험하려면 '1x1'로 설정.
+    plotname_runtime = 'RT.png' 
+    plotname_DRAM = 'DRAM.png' 
+    mnk_flag = False 
     
-    dflow = 'ws' #dataflow 설정
+    dflow = 'ws' #dataflow
     ###########################################################
 
-    topofile = './topologies/conv_nets/'+toponame+'.csv' #topology파일 full 경로 생성
-    config_base = './configs/SAsize/' #config파일 폴더
+    topofile = './topologies/conv_nets/'+toponame+'.csv'
+    config_base = './configs/SAsize/'
 
-    ### Config 파일 만들기 ###
+    ### make config ###
     createDirectory(config_base)
     cfgfname = SArow + 'x' + SAcol
     cfgname = config_base + cfgfname +'.cfg'
     Arr_row = int(SArow)
     Arr_col = int(SAcol)
-    IF_SRAM = int(2097152) #2MB
-    Fil_SRAM = int(2097152)
-    OF_SRAM = 1048576
+    IF_SRAM = int(1048576) 
+    Fil_SRAM = int(1048576)
+    OF_SRAM = 262144
     mkcfg(cfgname, dflow, Arr_row, Arr_col, IF_SRAM, Fil_SRAM, OF_SRAM)
 
-    grid_arr_dict = {'1x1':cfgfname,}
+    grid_arr_dict = {'4x4':cfgfname,}
+    #'16x16':'MACs_sq_256','32x32':'MACs_sq_1024',} #Dictionary of sim configs
+    # ('nxm':'config name') n and m are pod dimension.)
     #############################
     
     repname = SArow+'x'+SAcol
-    repdir='./Evaluation1/Scaleup_Detail/'+toponame #./reports_detail/simname_toponame
-    createDirectory('./Evaluation1/Scaleup_Detail/')
+    repdir='./Evaluation1/SAVector_Detail/'+toponame #./reports_detail/simname_toponame
+    createDirectory('./Evaluation1/SAVector_Detail')
     createDirectory(repdir)
     rep = open(repdir + '/' + repname + '.txt','w') #./reports/toponame/Detail/repname.txt
     
@@ -743,29 +764,45 @@ if __name__ == '__main__':
         grid1.run_simulations_all_layers()
         grid1.calc_overall_stats_all_layer()
 
-        cycles, util, ifmap_read, filter_reads, ofmap_writes, ifmap_read_sram, filter_reads_sram, ofmap_writes_sram, cycles_per_layer, util_all_layer = grid1.get_report_items()
-        #코드 수정해서 이제 ifmap_read와 같은 dram access는 개별 레이어마다 access수를 벡터로 가지고 있음.
 
+        cycles, util, ifmap_read, filter_reads, ofmap_writes, ifmap_read_sram, filter_reads_sram, ofmap_writes_sram, cycles_per_layer, util_all_layer, pod_util_per_layer = grid1.get_report_items()
+        
         Wutil = Get_weighted_util(cycles_per_layer, util_all_layer)
-        pod_Wutil = 100.0
+        pod_Wutil = Get_weighted_util(cycles_per_layer, pod_util_per_layer)
         util_all_layer=np.round(np.average(np.array(util_all_layer))*100,2)
 
-        #ofmap_writes = Get_OFMAP_offchip_writes(toponame) #ofmap DRAM write 수정
+        #report per pod
+        ifmap_dram_pod, filter_dram_pod, ofmap_dram_pod, number_layers = grid1.get_report_items_per_pod()
+        new_if_dram = []
+        new_fil_dram = []
+        for i in range(number_layers):
+            if_temp=0
+            fil_temp=0
+            for j in range(g_row): # j=0,1,...,grid_row-1
+                if_temp = if_temp + ifmap_dram_pod[i,(j*4)]
+                fil_temp = fil_temp + filter_dram_pod[i,j]
+            new_if_dram.append(if_temp)
+            new_fil_dram.append(fil_temp)
+        
+        ifmap_read = new_if_dram
+        filter_reads = new_fil_dram
+        #ofmap_writes = Get_OFMAP_offchip_writes(toponame)
+
         overall_read=ifmap_read+filter_reads+ofmap_writes
         overall_read_sram=ifmap_read_sram+filter_reads_sram+ofmap_writes_sram
         
         if gds==x_labels[0]:
             all_cycles = [cycles]
             all_utils = [util]
-            dram_arr = [[sum(ifmap_read), sum(filter_reads), sum(ofmap_writes)]] #전체 레이어 DRAM access 횟수
-            sram_arr = [[sum(ifmap_read_sram), sum(filter_reads_sram), sum(ofmap_writes_sram)]] #전체 레이어 SRAM access 횟수
+            dram_arr = [[sum(ifmap_read), sum(filter_reads), sum(ofmap_writes)]]
+            sram_arr = [[sum(ifmap_read_sram), sum(filter_reads_sram), sum(ofmap_writes_sram)]] 
             ov_dram = [overall_read]
             ov_sram = [overall_read_sram]
         else:
             all_cycles += [cycles]
             all_utils += [util]
-            dram_arr += [[sum(ifmap_read), sum(filter_reads), sum(ofmap_writes)]] #전체 레이어 DRAM access 횟수
-            sram_arr += [[sum(ifmap_read_sram), sum(filter_reads_sram), sum(ofmap_writes_sram)]] #전체 레이어 SRAM access 횟수
+            dram_arr += [[sum(ifmap_read), sum(filter_reads), sum(ofmap_writes)]]
+            sram_arr += [[sum(ifmap_read_sram), sum(filter_reads_sram), sum(ofmap_writes_sram)]] 
             ov_dram += [overall_read]
             ov_sram += [overall_read_sram]
 
@@ -783,11 +820,11 @@ if __name__ == '__main__':
         rep.write('IFMAP_SRAM={}\nFilter_SRAM={}\nOFMAP_SRAM={}\n'.format(ifmap_read_sram, filter_reads_sram, ofmap_writes_sram))
 
 
-    print('Overall runtime cycles:{}'.format(sum(all_cycles))) #실행시간(사이클)
-    print('Overall DRAM access:{}'.format(sum(ov_dram[0]))) #총 DRAM read
-    print('Overall SRAM access:{}'.format(sum(ov_sram[0]))) #총 DRAM read
-    print('Average PE Utilization:{}'.format(util_all_layer)) #Util 평균
-    print('Compute Util:{}'.format(np.round(util,2))) #Util 평균
+    print('Overall runtime cycles:{}'.format(sum(all_cycles))) 
+    print('Overall DRAM access:{}'.format(sum(ov_dram[0]))) 
+    print('Overall SRAM access:{}'.format(sum(ov_sram[0]))) 
+    print('Average PE Utilization:{}'.format(util_all_layer))
+    print('Compute Util:{}'.format(np.round(util,2))) 
     print('*Weighted Util:{}\n'.format(Wutil)) #Wutil
     print('*Weighted Pod Util:{}\n'.format(pod_Wutil)) #pod Wutil
 
@@ -802,15 +839,15 @@ if __name__ == '__main__':
     rep.close()
 
     repname2 = SArow+'x'+SAcol
-    repdir2='./Evaluation1/Scaleup_Compact/'+toponame #./reports_compact/simname_toponame
-    createDirectory('./Evaluation1/Scaleup_Compact')
+    repdir2='./Evaluation1/SAVector_Compact/'+toponame #./reports_compact/simname_toponame
+    createDirectory('./Evaluation1/SAVector_Compact')
     createDirectory(repdir2)
     rep2 = open(repdir2 + '/' + repname2 + '.txt','w') #./reports/toponame/Detail/repname.txt
 
-    rep2.write('Overall runtime cycles:{}\n'.format(sum(all_cycles))) #실행시간(사이클)
-    rep2.write('Overall DRAM access:{}\n'.format(sum(ov_dram[0]))) #총 DRAM read
-    rep2.write('Overall SRAM access:{}\n'.format(sum(ov_sram[0]))) #총 DRAM read
-    rep2.write('Average PE Utilization:{}\n'.format(util_all_layer)) #Util 평균
+    rep2.write('Overall runtime cycles:{}\n'.format(sum(all_cycles))) 
+    rep2.write('Overall DRAM access:{}\n'.format(sum(ov_dram[0]))) 
+    rep2.write('Overall SRAM access:{}\n'.format(sum(ov_sram[0])))
+    rep2.write('Average PE Utilization:{}\n'.format(util_all_layer)) 
     rep2.write('Compute Util:{}\n'.format(np.round(util,2)))
     rep2.write('DRAM reads:{}\n'.format(sum(ifmap_read)+sum(filter_reads)))
     rep2.write('DRAM writes:{}\n'.format(sum(ofmap_writes)))
@@ -819,3 +856,35 @@ if __name__ == '__main__':
     rep2.write('Weighted Util:{}\n'.format(Wutil))
     rep2.write('Weighted Pod Util:{}\n'.format(pod_Wutil))
     rep2.close()
+
+    # per pod
+    # ifmap_dram_pod, filter_dram_pod, ofmap_dram_pod, number_layers = grid1.get_report_items_per_pod()
+    # repname3 = SArow+'x'+SAcol
+    # repdir3='./Evaluation1/SAVector_perPod/'+toponame #./reports_compact/simname_toponame
+    # createDirectory('./Evaluation1/SAVector_perPod')
+    # createDirectory(repdir3)
+    # rep3 = open(repdir3 + '/' + repname2 + '.txt','w') #./reports/toponame/Detail/repname.txt
+    
+    # new_if_dram = 0
+    # new_fil_dram = 0
+    # for i in range(number_layers):
+    #     if_temp = ifmap_dram_pod[i,0]+ifmap_dram_pod[i,4]+ifmap_dram_pod[i,8]+ifmap_dram_pod[i,12]
+    #     new_if_dram = new_if_dram + if_temp
+    #     fil_temp = filter_dram_pod[i,0]+filter_dram_pod[i,1]+filter_dram_pod[i,2]+filter_dram_pod[i,3]
+    #     new_fil_dram = new_fil_dram + fil_temp
+    # print(new_if_dram)
+    # print(new_fil_dram)
+
+    # #stats_ifmap_dram_reads[layer_id, indx]
+    # rep3.write('per pod ifmap dram: ')
+    # for i in range(number_layers):
+    #     rep3.write("{} ".format(ifmap_dram_pod[i,0]))
+    # rep3.write('\nper pod filter dram: ')
+    # for i in range(number_layers):
+    #     rep3.write("{} ".format(filter_dram_pod[i,0]))
+    # rep3.write('\nper pod ofmap dram: ')
+    # for i in range(number_layers):
+    #     rep3.write("{} ".format(ofmap_dram_pod[i,0]))
+    # rep3.write('\n\nnew if dram: {}\nnew fil dram: {}'.format(new_if_dram, new_fil_dram))
+    # rep3.write('\nnew total DRAM: {}'.format(new_if_dram+new_fil_dram+sum(ofmap_writes)))
+    # rep3.close()
