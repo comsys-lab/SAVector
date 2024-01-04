@@ -19,7 +19,9 @@ You can run the simulation with a python code:
 
 For example, the code below simulate a scale-out architecture with 4x4 pod dimension and 32x32 systolic array dimension. Benchmark is DenseNet-169 with batch size=1.
 
-```python3 Scale_out_sim_faster DenseNet169 32x32 4x4 1 ```
+```
+python3 Scale_out_sim_faster DenseNet169 32x32 4x4 1
+```
 
 The above instruction working for `Scale_up_sim_faster.py`, `Scale_out_sim_faster.py`, `SAVector_sim_faster.py`, `SAVector_sim_perf_mode.py`, `SOSA_rev_RT.py`, `SOSA_rev_idealRT.py`, `Shared_buffer_sim_ideal.py`.
 
