@@ -4,8 +4,11 @@ This repository contains scale-out DNN accelerator simulators. The simulators ar
 
 ## Description
 `Scale_up_sim_faster.py`: Simulate the scale-up architecture with a single pod.
+
 `Scale_out_sim_faster.py`: Simulate the scale-out architecture.
+
 `SAVector_sim_faster.py`, `SAVector_sim_perf_mode.py`: Simulate SAVector architecture. Basicaly, we use `SAVector_sim_perf_mode.py`.
+
 `SOSA_rev_RT.py`, `SOSA_rev_idealRT.py`: Simulate SOSA architecture. idealRT simulates the SOSA architecture with no performance degradation from shared buffer access latency.
 
 ## How to run simulation
