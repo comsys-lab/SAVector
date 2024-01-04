@@ -1,7 +1,0 @@
-Layer,M,N,K,
-MH_get_QKV,30,768,64,
-MH_QxKT,30,64,30,
-MH_QxKTxV,30,30,64,
-MH_Concat_Linear,30,768,768,
-FF1,30,768,3072,
-FF2,30,3072,768,

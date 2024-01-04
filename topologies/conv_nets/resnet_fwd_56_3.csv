@@ -1,2 +1,0 @@
-﻿Layer name,Ifmap height,ifmap width,filter height,filter width,channels,num filters,strides,
-layer_64_3_conv2,56,56,3,3,64,64,1,
