@@ -1,0 +1,5 @@
+Layer,M,N,K
+MH_QKV,#words,dmodel,hdk
+MH_W0,#words,hdk,dmodel
+FC_2048,#words,dmodel,4dmodel
+FC_512,#words,4dmodel,dmodel

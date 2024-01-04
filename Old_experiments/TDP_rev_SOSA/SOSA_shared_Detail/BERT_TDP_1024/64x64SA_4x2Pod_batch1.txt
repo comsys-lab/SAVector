@@ -1,0 +1,24 @@
+
+***4x2 REPORT
+*Runtime= 48576.0
+*DRAM reads= 4194304.0, 1048576.0, 1048576
+*total DRAM reads= 6291456.0
+*SRAM reads= 16777216.0, 2097152.0, 16777216.0
+*total SRAM reads= 35651584.0
+*Weighted Util:100.0
+*Weighted Pod Util:100.0
+*Per-layer info:
+Runtimes=[48576.0]
+IFMAP_DRAM=[4194304.0]
+Filter_DRAM=[1048576.0]
+OFMAP_DRAM=[1048576]
+IFMAP_SRAM=[16777216.0]
+Filter_SRAM=[2097152.0]
+OFMAP_SRAM=[16777216.0]
+
+RT=[48576.0]
+DRAMS=[6291456.0]
+SRAMS=[35651584.0]
+Batch Size:1
+
+Elapsed Time=0:00:32.599006

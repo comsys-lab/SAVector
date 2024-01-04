@@ -1,0 +1,10 @@
+<topology>
+conv_nets/alexnet_conv2.csv
+
+<inp_type> (conv, gemm)
+conv
+
+<configs>
+name,dataflow,ArrHeight,ArrWidth,IFSRAM,WeightSRAM,OFSRAM
+alexconv2,ws,128,128,9999999999,9999999999,9999999999
+END

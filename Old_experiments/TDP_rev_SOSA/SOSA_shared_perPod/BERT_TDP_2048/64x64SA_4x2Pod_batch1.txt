@@ -1,0 +1,4 @@
+per pod ifmap dram: [       0.        0.        0.        0.        0.        0.        0.
+ 33554432.] 
+per pod filter dram: [      0.       0.       0.       0.       0.       0.       0. 4194304.] 
+per pod ofmap dram: 0 

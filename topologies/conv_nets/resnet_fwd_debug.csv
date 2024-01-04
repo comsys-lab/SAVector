@@ -1,0 +1,2 @@
+﻿Layer name,Ifmap height,ifmap width,filter height,filter width,channels,num filters,strides,
+fc1000,1,1,1,1,2048,1000,1,

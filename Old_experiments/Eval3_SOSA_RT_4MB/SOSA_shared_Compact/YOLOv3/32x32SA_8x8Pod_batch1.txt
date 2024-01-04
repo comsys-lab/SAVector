@@ -1,0 +1,14 @@
+Overall runtime cycles:561261.0
+Overall DRAM access:69392058.0
+Overall SRAM access:681779415.0
+Average PE Utilization:85.94
+Compute Util:21.34
+DRAM reads:57748818.0
+DRAM writes:11643240.0
+SRAM reads:436130654.0
+SRAM writes:245648761.0
+Weighted Util:81.01
+Weighted Pod Util:92.36
+Batch Size:1
+
+Elapsed Time=0:17:32.340901
