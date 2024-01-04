@@ -1,5 +1,6 @@
 # Intro
 This repository contains scale-out DNN accelerator simulators. The simulators are based on SCALE-Simv2.
+(Readme is working in progress...)
 
 ## Description
 `Scale_up_sim_faster.py`: Simulate the scale-up architecture with a single pod.
